@@ -46,7 +46,7 @@ func (q QueryLogItem) String() string {
 	if q.overTCP {
 		trans = "TCP"
 	}
-	return fmt.Sprintf("%s | %-41s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.query)
+	return fmt.Sprintf("%s | %-43s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.query)
 }
 
 func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
@@ -89,7 +89,7 @@ func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
 }
 
 func main() {
-	fmt.Println("VERSION", VERSION+"-"+REVISION)
+	displayBanner()
 
 	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
 	if err != nil {
@@ -106,4 +106,9 @@ func main() {
 		item := newQueryLogItem(packet)
 		fmt.Println(item.String())
 	}
+}
+
+func displayBanner() {
+	v := VERSION + "-" + REVISION
+	fmt.Printf("Version: %s\n", v)
 }
