@@ -31,18 +31,27 @@ type QueryLogItem struct {
 	srcIP     net.IP
 	dstIP     net.IP
 	srcPort   uint16
+	dstPort   uint16
 	query     string
 	rrType    string
+	overTCP   bool
 }
 
 func (q QueryLogItem) String() string {
-	return fmt.Sprintf("%s %s (%d) %s %s (%s)",
-		q.timestamp.String(), q.srcIP.String(), q.srcPort, q.dstIP.String(), q.query, q.rrType)
+	ts := q.timestamp.Format(time.RFC3339)
+	src := fmt.Sprintf("%s.%d", q.srcIP.String(), q.srcPort)
+	dst := fmt.Sprintf("%s.%d", q.dstIP.String(), q.dstPort)
+	qtype := fmt.Sprintf("%s?", q.rrType)
+	trans := "UDP"
+	if q.overTCP {
+		trans = "TCP"
+	}
+	return fmt.Sprintf("%s | %-41s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.query)
 }
 
 func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
 	q := new(QueryLogItem)
-	q.timestamp = packet.Metadata().Timestamp
+	q.timestamp = time.Now()
 
 	if err := packet.ErrorLayer(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decode some part of the packet: %v\n", err)
@@ -58,6 +67,14 @@ func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
 	if udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer != nil {
 		udp, _ := udpLayer.(*layers.UDP)
 		q.srcPort = uint16(udp.SrcPort)
+		q.dstPort = uint16(udp.DstPort)
+	}
+
+	if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
+		tcp, _ := tcpLayer.(*layers.TCP)
+		q.srcPort = uint16(tcp.SrcPort)
+		q.dstPort = uint16(tcp.DstPort)
+		q.overTCP = true
 	}
 
 	if dnsLayer := packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
