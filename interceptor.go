@@ -10,20 +10,23 @@ import (
 )
 
 const (
-	device       string        = "eth1"
-	filter       string        = "dst port 53" // Only capturing DNS query packets
-	snapshot_len int32         = 262144        // The same default as tcpdump
-	promiscuous  bool          = true
-	timeout      time.Duration = 30 * time.Second
+	device      string        = "eth1"        // Where DNS packets are forwarded
+	filter      string        = "dst port 53" // Only capturing DNS queries
+	snaplen     int32         = 1600
+	promiscuous bool          = true
+	timeout     time.Duration = pcap.BlockForever
 )
 
 var (
-	err    error
-	handle *pcap.Handle
+	VERSION  string = "0.0.0"
+	REVISION string = "develop"
+	err      error
 )
 
 func main() {
-	handle, err = pcap.OpenLive(device, snapshot_len, promiscuous, timeout)
+	fmt.Println("VERSION", VERSION+"-"+REVISION)
+
+	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
