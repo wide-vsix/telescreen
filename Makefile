@@ -14,6 +14,15 @@ all: build
 build: interceptor.go
 	@go build $(GO_BUILD) -o $(BINDIR)/interceptor -v
 
+.PHONY: run
+run: build
+	@sudo ./bin/interceptor
+
+.PHONY: clean
+clean:
+	@go clean
+	@rm -rf $(BINDIR)
+
 .PHONY: install
 install: build
 	@sudo cp bin/interceptor /usr/local/bin/interceptor
@@ -24,11 +33,12 @@ install: build
 	@sudo systemctl daemon-reload
 	@sudo systemctl enable dns-query-interceptor@vsix.service
 
-.PHONY: run
-run: build
-	@sudo ./bin/interceptor
-
-.PHONY: clean
-clean:
-	@go clean
-	@rm -rf $(BINDIR)
+.PHONY: uninstall
+uninstall:
+	@sudo systemctl disable --now dns-query-interceptor@vsix.service
+	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml kill || true
+	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml rm -f || true
+	@sudo docker volume rm interceptor_psql interceptor_pgadmin || true
+	@sudo rm -rf /usr/local/bin/interceptor /usr/local/etc/interceptor
+	@sudo rm -f /etc/systemd/system/dns-query-interceptor@.service
+	@sudo systemctl daemon-reload

@@ -1,5 +1,5 @@
 [Unit]
-Description=DNS Query Interceptor - collect all queries passing through specified interface and store them in Postgres
+Description=DNS Query Interceptor
 Requires=docker.service
 
 [Service]
@@ -8,7 +8,7 @@ Restart=on-failure
 RestartSec=10
 RestartForceExitStatus=1
 ExecStartPre=docker-compose -f /usr/local/etc/interceptor/docker-compose.yml up -d postgres
-ExecStart=/usr/local/bin/interceptor -i %I -q --db-host localhost:5432 --db-name queries --db-user vsix --db-password-file /usr/local/etc/interceptor/.secrets/db_password.txt
+ExecStart=/usr/local/bin/interceptor -i %i -q --db-host localhost:5432 --db-name interceptor --db-user vsix --db-password-file /usr/local/etc/interceptor/.secrets/db_password.txt
 RemainAfterExit=yes
 OOMPolicy=stop
 
