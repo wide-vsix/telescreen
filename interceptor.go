@@ -27,12 +27,11 @@ const (
 var (
 	VERSION     string = "0.0.0"
 	REVISION    string = "develop"
-	device      string
-	dbAddr      string
-	dbName      string
-	dbUser      string
-	dbPassFile  string
-	dbPass      string
+	device      string // Where DNS packets are forwarded
+	dbAddr      string // Postgresql: IP address and port number pair
+	dbName      string // Postgresql: Database name
+	dbUser      string // Postgresql: Login username
+	dbPassFile  string // Postgresql: Login password file
 	quietFlag   bool
 	helpFlag    bool
 	versionFlag bool
