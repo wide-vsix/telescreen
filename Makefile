@@ -32,6 +32,10 @@ install: build
 	@sudo cp systemd/dns-query-interceptor@.service /etc/systemd/system/dns-query-interceptor@.service
 	@sudo systemctl daemon-reload
 	@sudo systemctl enable dns-query-interceptor@vsix.service
+	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml pull
+	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml up -d postgres
+	@sleep 5
+	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml stop
 
 .PHONY: uninstall
 uninstall:
