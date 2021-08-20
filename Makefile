@@ -8,11 +8,21 @@ GO_LDFLAGS := $(GO_LDFLAGS_VERSION)
 GO_BUILD := -ldflags "$(GO_LDFLAGS)"
 
 .PHONY: all
-all: build run
+all: build
 
 .PHONY: build
 build: interceptor.go
 	@go build $(GO_BUILD) -o $(BINDIR)/interceptor -v
+
+.PHONY: install
+install: build
+	@sudo cp bin/interceptor /usr/local/bin/interceptor
+	@sudo mkdir -p /usr/local/etc/interceptor
+	@sudo cp docker-compose.yml /usr/local/etc/interceptor/docker-compose.yml
+	@sudo cp -r .secrets /usr/local/etc/interceptor/.secrets
+	@sudo cp systemd/dns-query-interceptor@.service /etc/systemd/system/dns-query-interceptor@.service
+	@sudo systemctl daemon-reload
+	@sudo systemctl enable dns-query-interceptor@vsix.service
 
 .PHONY: run
 run: build
