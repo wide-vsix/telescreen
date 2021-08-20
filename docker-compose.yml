@@ -7,7 +7,7 @@ services:
     ports:
       - 5432:5432
     environment:
-      POSTGRES_DB: interceptor
+      POSTGRES_DB: interception
       POSTGRES_USER: vsix
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       TZ: "Asia/Tokyo"

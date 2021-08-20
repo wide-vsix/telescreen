@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-pg/pg/v10"
+	"github.com/go-pg/pg/v10/orm"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -26,31 +28,31 @@ var (
 	err      error
 )
 
-type QueryLogItem struct {
-	timestamp time.Time
-	srcIP     net.IP
-	dstIP     net.IP
-	srcPort   uint16
-	dstPort   uint16
-	query     string
-	rrType    string
-	overTCP   bool
+type QueryLog struct {
+	Timestamp time.Time `db:"received_at"`
+	SrcIP     net.IP    `db:"src_ip"`
+	DstIP     net.IP    `db:"dst_ip"`
+	SrcPort   uint16    `db:"src_port"`
+	DstPort   uint16    `db:"dst_port"`
+	Query     string    `db:"query_string"`
+	RRType    string    `db:"query_type"`
+	OverTCP   bool      `db:"query_over_tcp"`
 }
 
-func (q QueryLogItem) String() string {
-	ts := q.timestamp.Format(time.RFC3339)
-	src := fmt.Sprintf("%s.%d", q.srcIP.String(), q.srcPort)
-	dst := fmt.Sprintf("%s.%d", q.dstIP.String(), q.dstPort)
-	qtype := fmt.Sprintf("%s?", q.rrType)
+func (q QueryLog) String() string {
+	ts := q.Timestamp.Format(time.RFC3339)
+	src := fmt.Sprintf("%s.%d", q.SrcIP.String(), q.SrcPort)
+	dst := fmt.Sprintf("%s.%d", q.DstIP.String(), q.DstPort)
+	qtype := fmt.Sprintf("%s?", q.RRType)
 	trans := "UDP"
-	if q.overTCP {
+	if q.OverTCP {
 		trans = "TCP"
 	}
-	return fmt.Sprintf("%s | %-43s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.query)
+	return fmt.Sprintf("%s | %-43s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.Query)
 }
 
-func (q QueryLogItem) Colorize() string {
-	switch q.rrType {
+func (q QueryLog) Colorize() string {
+	switch q.RRType {
 	case "A":
 		return fmt.Sprintf("\033[31m%s\033[0m", q.String())
 	case "AAAA":
@@ -60,9 +62,9 @@ func (q QueryLogItem) Colorize() string {
 	}
 }
 
-func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
-	q := new(QueryLogItem)
-	q.timestamp = time.Now()
+func newQueryLog(packet gopacket.Packet) *QueryLog {
+	q := new(QueryLog)
+	q.Timestamp = time.Now()
 
 	if err := packet.ErrorLayer(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decode some part of the packet: %v\n", err)
@@ -71,28 +73,28 @@ func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
 
 	if ip6Layer := packet.Layer(layers.LayerTypeIPv6); ip6Layer != nil {
 		ip6, _ := ip6Layer.(*layers.IPv6)
-		q.srcIP = ip6.SrcIP
-		q.dstIP = ip6.DstIP
+		q.SrcIP = ip6.SrcIP
+		q.DstIP = ip6.DstIP
 	}
 
 	if udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer != nil {
 		udp, _ := udpLayer.(*layers.UDP)
-		q.srcPort = uint16(udp.SrcPort)
-		q.dstPort = uint16(udp.DstPort)
+		q.SrcPort = uint16(udp.SrcPort)
+		q.DstPort = uint16(udp.DstPort)
 	}
 
 	if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
 		tcp, _ := tcpLayer.(*layers.TCP)
-		q.srcPort = uint16(tcp.SrcPort)
-		q.dstPort = uint16(tcp.DstPort)
-		q.overTCP = true
+		q.SrcPort = uint16(tcp.SrcPort)
+		q.DstPort = uint16(tcp.DstPort)
+		q.OverTCP = true
 	}
 
 	if dnsLayer := packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
 		dns, _ := dnsLayer.(*layers.DNS)
 		for _, question := range dns.Questions {
-			q.query = string(question.Name)
-			q.rrType = question.Type.String()
+			q.Query = string(question.Name)
+			q.RRType = question.Type.String()
 		}
 	}
 
@@ -112,10 +114,27 @@ func main() {
 		log.Fatal(err)
 	}
 
+	db := pg.Connect(&pg.Options{
+		Addr:     "localhost:5432",
+		User:     "vsix",
+		Password: "changeme",
+		Database: "interception",
+	})
+	defer db.Close()
+
+	schema := (*QueryLog)(nil)
+	db.Model(schema).CreateTable(&orm.CreateTableOptions{
+		IfNotExists:   true,
+		FKConstraints: true,
+	})
+
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		item := newQueryLogItem(packet)
+		item := newQueryLog(packet)
 		fmt.Println(item.Colorize())
+		if _, err = db.Model(item).Insert(); err != nil {
+			panic(err)
+		}
 	}
 }
 
