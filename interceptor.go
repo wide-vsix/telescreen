@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"time"
@@ -11,10 +12,12 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+
+	flag "github.com/spf13/pflag"
 )
 
 const (
-	device      string        = "eth1"                // Where DNS packets are forwarded
+	_device     string        = "vsix"                //Where DNS packets are forwarded
 	filter      string        = "udp and dst port 53" // Only capturing UDP DNS queries
 	snaplen     int32         = 1600
 	promiscuous bool          = true
@@ -22,9 +25,18 @@ const (
 )
 
 var (
-	VERSION  string = "0.0.0"
-	REVISION string = "develop"
-	err      error
+	VERSION     string = "0.0.0"
+	REVISION    string = "develop"
+	device      string
+	dbAddr      string
+	dbName      string
+	dbUser      string
+	dbPassFile  string
+	dbPass      string
+	quietFlag   bool
+	helpFlag    bool
+	versionFlag bool
+	err         error
 )
 
 type QueryLog struct {
@@ -147,16 +159,57 @@ func interceptor(exporters []func(*QueryLog)) {
 	}
 }
 
-func main() {
-	options := pg.Options{
-		Addr:     "localhost:5432",
-		User:     "vsix",
-		Password: "changeme",
-		Database: "interception",
-	}
-	dbExporter, dbCloser := newDBExporter(&options)
-	defer dbCloser()
+func init() {
+	flag.StringVarP(&device, "dev", "i", "", "Caputing interface name")
+	flag.BoolVarP(&quietFlag, "quiet", "q", false, "Suppress standard output")
+	flag.StringVar(&dbAddr, "db-addr", "", "Postgresql server address to store queries (e.g., localhost:5432)")
+	flag.StringVar(&dbName, "db-name", "", "Database name to store queries")
+	flag.StringVar(&dbUser, "db-user", "", "Username to login DB")
+	flag.StringVar(&dbPassFile, "db-password-file", "", "Path of plaintext password file")
+	flag.BoolVarP(&helpFlag, "help", "h", false, "Show help message")
+	flag.BoolVarP(&versionFlag, "version", "v", false, "Show build version")
+	flag.CommandLine.SortFlags = false
+}
 
-	exps := []func(*QueryLog){dbExporter, stdExporter}
-	interceptor(exps)
+func main() {
+	flag.Parse()
+
+	if versionFlag {
+		fmt.Println(VERSION + "-" + REVISION)
+		os.Exit(0)
+	}
+
+	if helpFlag || device == "" {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+
+	exporters := []func(*QueryLog){}
+
+	if dbAddr != "" && dbName != "" && dbUser != "" && dbPassFile != "" {
+		f, err := os.Open(dbPassFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open DB password file: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+
+		b, err := ioutil.ReadAll(f)
+		password := string(b)
+		dbExporter, dbCloser := newDBExporter(&pg.Options{
+			Addr:     dbAddr,
+			User:     dbUser,
+			Password: password,
+			Database: dbName,
+		})
+
+		exporters = append(exporters, dbExporter)
+		defer dbCloser()
+	}
+
+	if !quietFlag {
+		exporters = append(exporters, stdExporter)
+	}
+
+	interceptor(exporters)
 }
