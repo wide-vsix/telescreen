@@ -161,7 +161,7 @@ func interceptor(exporters []func(*QueryLog)) {
 func init() {
 	flag.StringVarP(&device, "dev", "i", "", "Caputing interface name")
 	flag.BoolVarP(&quietFlag, "quiet", "q", false, "Suppress standard output")
-	flag.StringVar(&dbAddr, "db-addr", "", "Postgresql server address to store queries (e.g., localhost:5432)")
+	flag.StringVar(&dbAddr, "db-host", "", "Postgresql server address to store queries (e.g., localhost:5432)")
 	flag.StringVar(&dbName, "db-name", "", "Database name to store queries")
 	flag.StringVar(&dbUser, "db-user", "", "Username to login DB")
 	flag.StringVar(&dbPassFile, "db-password-file", "", "Path of plaintext password file")

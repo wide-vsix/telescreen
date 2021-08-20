@@ -6,6 +6,9 @@ services:
     restart: unless-stopped
     ports:
       - 5432:5432
+    networks:
+      ipv6_gw:
+      default:
     environment:
       POSTGRES_DB: interception
       POSTGRES_USER: vsix
@@ -21,6 +24,9 @@ services:
     restart: unless-stopped
     ports:
       - 5050:80
+    networks:
+      ipv6_gw:
+      default:
     environment:
       PGADMIN_DEFAULT_EMAIL: vsix@vsix.wide.ad.jp
       PGADMIN_DEFAULT_PASSWORD: changeme
@@ -28,6 +34,10 @@ services:
       - pgadmin:/var/lib/pgadmin
     depends_on:
       - postgres
+
+networks:
+  ipv6_gw:
+    external: true
 
 secrets:
   db_password:
