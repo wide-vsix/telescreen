@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"time"
@@ -101,44 +100,63 @@ func newQueryLog(packet gopacket.Packet) *QueryLog {
 	return q
 }
 
-func main() {
-	displayBanner()
+func stdExporter(q *QueryLog) {
+	fmt.Println(q.Colorize())
+}
 
-	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer handle.Close()
-
-	if err = handle.SetBPFFilter(filter); err != nil {
-		log.Fatal(err)
-	}
-
-	db := pg.Connect(&pg.Options{
-		Addr:     "localhost:5432",
-		User:     "vsix",
-		Password: "changeme",
-		Database: "interception",
-	})
-	defer db.Close()
-
+func newDBExporter(options *pg.Options) (func(q *QueryLog), func()) {
+	db := pg.Connect(options)
 	schema := (*QueryLog)(nil)
 	db.Model(schema).CreateTable(&orm.CreateTableOptions{
 		IfNotExists:   true,
 		FKConstraints: true,
 	})
 
+	exporter := func(q *QueryLog) {
+		if _, err = db.Model(q).Insert(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to issue INSERT: %v\n", err)
+		}
+	}
+
+	closer := func() {
+		db.Close()
+		fmt.Println("DB connection closed")
+	}
+
+	return exporter, closer
+}
+
+func interceptor(exporters []func(*QueryLog)) {
+	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to start capturing: %v\n", err)
+		return
+	}
+	defer handle.Close()
+
+	if err = handle.SetBPFFilter(filter); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to set BPF filter: %v\n", err)
+	}
+
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		item := newQueryLog(packet)
-		fmt.Println(item.Colorize())
-		if _, err = db.Model(item).Insert(); err != nil {
-			panic(err)
+		q := newQueryLog(packet)
+		for _, exporter := range exporters {
+			exporter(q)
 		}
 	}
 }
 
-func displayBanner() {
-	v := VERSION + "-" + REVISION
-	fmt.Printf("Version: %s\n", v)
+func main() {
+	options := pg.Options{
+		Addr:     "localhost:5432",
+		User:     "vsix",
+		Password: "changeme",
+		Database: "interception",
+	}
+	dbExporter, dbCloser := newDBExporter(&options)
+	defer dbCloser()
+
+	exps := []func(*QueryLog){dbExporter, stdExporter}
+	interceptor(exps)
 }
