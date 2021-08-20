@@ -32,6 +32,7 @@ Following options are available:
 **CAUTION:** Defaults of this repository are for the vSIX Access Service.
 
 ```
+% echo -n 'VSIX_STANDARD_PASSWORD' | sha256sum | awk '{print $1}' > .secrets/db_password.txt
 % make install
 % sudo systemctl start dns-query-interceptor@vsix.service
 ```
