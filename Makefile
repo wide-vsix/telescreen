@@ -1,6 +1,6 @@
 BINDIR := bin
 ROOT_PACKAGE := $(shell go list .)
-VERSION := $(shell git describe --tags)
+VERSION := $(shell git describe --tags --abbrev=0)
 REVISION := $(shell git rev-parse --short HEAD)
 #GO_LDFLAGS_VERSION := -X '${ROOT_PACKAGE}.VERSION=${VERSION}' -X '${ROOT_PACKAGE}.REVISION=${REVISION}'
 GO_LDFLAGS_VERSION := -X 'main.VERSION=${VERSION}' -X 'main.REVISION=${REVISION}'
