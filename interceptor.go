@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	_device     string        = "vsix"                //Where DNS packets are forwarded
-	filter      string        = "udp and dst port 53" // Only capturing UDP DNS queries
+	filter      string        = "dst port 53" // Only capturing DNS queries
 	snaplen     int32         = 1600
 	promiscuous bool          = true
 	timeout     time.Duration = pcap.BlockForever
