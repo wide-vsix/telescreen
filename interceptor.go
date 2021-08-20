@@ -49,6 +49,17 @@ func (q QueryLogItem) String() string {
 	return fmt.Sprintf("%s | %-43s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.query)
 }
 
+func (q QueryLogItem) Colorize() string {
+	switch q.rrType {
+	case "A":
+		return fmt.Sprintf("\033[31m%s\033[0m", q.String())
+	case "AAAA":
+		return fmt.Sprintf("\033[32m%s\033[0m", q.String())
+	default:
+		return q.String()
+	}
+}
+
 func newQueryLogItem(packet gopacket.Packet) *QueryLogItem {
 	q := new(QueryLogItem)
 	q.timestamp = time.Now()
@@ -104,7 +115,7 @@ func main() {
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
 		item := newQueryLogItem(packet)
-		fmt.Println(item.String())
+		fmt.Println(item.Colorize())
 	}
 }
 
