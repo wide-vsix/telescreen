@@ -36,6 +36,7 @@ var (
 	helpFlag    bool
 	versionFlag bool
 	err         error
+	errCounter  uint16
 )
 
 type QueryLog struct {
@@ -126,12 +127,19 @@ func newDBExporter(options *pg.Options) (func(q *QueryLog), func()) {
 	exporter := func(q *QueryLog) {
 		if _, err = db.Model(q).Insert(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to issue INSERT: %v\n", err)
+			errCounter += 1
+			if errCounter > 5 {
+				fmt.Fprintf(os.Stderr, "Exit with DB connection problem\n")
+				os.Exit(1)
+			}
+			return
 		}
+		errCounter = 0
 	}
 
 	closer := func() {
 		db.Close()
-		fmt.Println("DB connection closed")
+		fmt.Println("Database connection closed")
 	}
 
 	return exporter, closer
@@ -188,7 +196,7 @@ func main() {
 	if dbAddr != "" && dbName != "" && dbUser != "" && dbPassFile != "" {
 		f, err := os.Open(dbPassFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to open DB password file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Failed to open password file for DB login: %v\n", err)
 			os.Exit(1)
 		}
 		defer f.Close()
@@ -202,6 +210,7 @@ func main() {
 			Database: dbName,
 		})
 
+		fmt.Println("Database connection prepared")
 		exporters = append(exporters, dbExporter)
 		defer dbCloser()
 	}
