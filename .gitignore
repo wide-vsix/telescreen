@@ -1,4 +1,6 @@
 bin/*
+.secrets/*
+!.secrets/*.example
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,visualstudiocode,vim,emacs,windows,go
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,visualstudiocode,vim,emacs,windows,go
