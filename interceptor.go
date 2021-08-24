@@ -39,14 +39,14 @@ var (
 )
 
 type QueryLog struct {
-	Timestamp time.Time `db:"received_at"`
-	SrcIP     net.IP    `db:"src_ip"`
-	DstIP     net.IP    `db:"dst_ip"`
-	SrcPort   uint16    `db:"src_port"`
-	DstPort   uint16    `db:"dst_port"`
-	Query     string    `db:"query_string"`
-	RRType    string    `db:"query_type"`
-	OverTCP   bool      `db:"query_over_tcp"`
+	Timestamp time.Time `pg:"received_at"`
+	SrcIP     net.IP    `pg:"src_ip"`
+	DstIP     net.IP    `pg:"dst_ip"`
+	SrcPort   uint16    `pg:"src_port"`
+	DstPort   uint16    `pg:"dst_port"`
+	Query     string    `pg:"query_string"`
+	RRType    string    `pg:"query_type"`
+	OverTCP   bool      `pg:"query_over_tcp"`
 }
 
 func (q QueryLog) String() string {
