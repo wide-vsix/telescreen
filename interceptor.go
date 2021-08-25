@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	filter      string        = "dst port 53" // Only capturing DNS queries
+	filter      string        = "port 53" // Only capturing DNS packets, both queries and responses
 	snaplen     int32         = 1600
 	promiscuous bool          = true
 	timeout     time.Duration = pcap.BlockForever
@@ -33,98 +33,175 @@ var (
 	dbPassFile  string // Postgresql: Login password file
 	quietFlag   bool
 	helpFlag    bool
+	sniffFlag   bool
 	versionFlag bool
 	err         error
 	errCounter  uint16
 )
 
-type QueryLog struct {
+type InterceptorLog interface {
+	String() string
+	Colorize() string
+}
+
+type InterceptorLogCommon struct {
 	Timestamp time.Time `pg:"received_at"`
 	SrcIP     net.IP    `pg:"src_ip"`
 	DstIP     net.IP    `pg:"dst_ip"`
 	SrcPort   uint16    `pg:"src_port"`
 	DstPort   uint16    `pg:"dst_port"`
-	Query     string    `pg:"query_string"`
-	RRType    string    `pg:"query_type"`
-	OverTCP   bool      `pg:"query_over_tcp"`
+	TransTCP  bool      `pg:"tcp_transport"`
 }
 
-func (q QueryLog) String() string {
+type QueryLog struct {
+	InterceptorLogCommon
+	QString   string `pg:"query_string"`
+	QType     string `pg:"query_type"`
+	hasAnswer bool   `pg:"-"`
+}
+
+type ResponseLog struct {
+	QueryLog
+	AnsIP     net.IP `pg:"answer_ip"`
+	IPv6Ready bool   `pg:"ipv6_ready"`
+}
+
+func (q *QueryLog) String() string {
 	ts := q.Timestamp.Format(time.RFC3339)
 	src := fmt.Sprintf("%s.%d", q.SrcIP.String(), q.SrcPort)
 	dst := fmt.Sprintf("%s.%d", q.DstIP.String(), q.DstPort)
-	qtype := fmt.Sprintf("%s?", q.RRType)
+	qtype := fmt.Sprintf("%s?", q.QType)
 	trans := "UDP"
-	if q.OverTCP {
+	if q.TransTCP {
 		trans = "TCP"
 	}
-	return fmt.Sprintf("%s | %-43s > %-25s %s %-5s %s", ts, src, dst, trans, qtype, q.Query)
+	return fmt.Sprintf("%s | %-43s > %-25s %s %-8s %s", ts, src, dst, trans, qtype, q.QString)
 }
 
-func (q QueryLog) Colorize() string {
-	switch q.RRType {
+func (q *QueryLog) Colorize() string {
+	switch q.QType {
 	case "A":
-		return fmt.Sprintf("\033[31m%s\033[0m", q.String())
+		return fmt.Sprintf("\033[0;31m%s\033[0m", q.String())
 	case "AAAA":
-		return fmt.Sprintf("\033[32m%s\033[0m", q.String())
+		return fmt.Sprintf("\033[0;32m%s\033[0m", q.String())
 	default:
 		return q.String()
 	}
 }
 
-func newQueryLog(packet gopacket.Packet) *QueryLog {
-	q := new(QueryLog)
-	q.Timestamp = time.Now()
+func (r *ResponseLog) String() string {
+	ts := r.Timestamp.Format(time.RFC3339)
+	src := fmt.Sprintf("%s.%d", r.SrcIP.String(), r.SrcPort)
+	dst := fmt.Sprintf("%s.%d", r.DstIP.String(), r.DstPort)
+	qtype := fmt.Sprintf("%s?", r.QType)
+	trans := "UDP"
+	if r.TransTCP {
+		trans = "TCP"
+	}
+	return fmt.Sprintf("%s | %-43s < %-25s %s %-8s %s (%s)", ts, dst, src, trans, qtype, r.QString, r.AnsIP)
+}
+
+func (r *ResponseLog) Colorize() string {
+	if r.IPv6Ready {
+		return fmt.Sprintf("\033[0;34m%s\033[0m", r.String())
+	}
+	return fmt.Sprintf("\033[0;35m%s\033[0m", r.String())
+}
+
+func newInterceptorLogCommon(packet gopacket.Packet) *InterceptorLogCommon {
+	c := new(InterceptorLogCommon)
+	c.Timestamp = time.Now()
 
 	if err := packet.ErrorLayer(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decode some part of the packet: %v\n", err)
-		return q
+		return nil
 	}
 
 	if ip6Layer := packet.Layer(layers.LayerTypeIPv6); ip6Layer != nil {
 		ip6, _ := ip6Layer.(*layers.IPv6)
-		q.SrcIP = ip6.SrcIP
-		q.DstIP = ip6.DstIP
+		c.SrcIP = ip6.SrcIP
+		c.DstIP = ip6.DstIP
+	} else {
+		return nil
 	}
 
 	if udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer != nil {
 		udp, _ := udpLayer.(*layers.UDP)
-		q.SrcPort = uint16(udp.SrcPort)
-		q.DstPort = uint16(udp.DstPort)
+		c.SrcPort = uint16(udp.SrcPort)
+		c.DstPort = uint16(udp.DstPort)
 	}
 
 	if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
 		tcp, _ := tcpLayer.(*layers.TCP)
-		q.SrcPort = uint16(tcp.SrcPort)
-		q.DstPort = uint16(tcp.DstPort)
-		q.OverTCP = true
+		c.SrcPort = uint16(tcp.SrcPort)
+		c.DstPort = uint16(tcp.DstPort)
+		c.TransTCP = true
 	}
+
+	return c
+}
+
+func newQueryLog(packet gopacket.Packet, c *InterceptorLogCommon) *QueryLog {
+	q := new(QueryLog)
+	q.InterceptorLogCommon = *c
 
 	if dnsLayer := packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
 		dns, _ := dnsLayer.(*layers.DNS)
-		for _, question := range dns.Questions {
-			q.Query = string(question.Name)
-			q.RRType = question.Type.String()
+		if len(dns.Questions) > 0 {
+			question := dns.Questions[0]
+			q.QString = string(question.Name)
+			q.QType = question.Type.String()
+			q.hasAnswer = len(dns.Answers) > 0
+			return q
 		}
 	}
 
-	return q
+	return nil
 }
 
-func stdExporter(q *QueryLog) {
-	fmt.Println(q.Colorize())
+func newResponseLog(packet gopacket.Packet, q *QueryLog) *ResponseLog {
+	if q == nil {
+		return nil
+	}
+
+	r := new(ResponseLog)
+	r.QueryLog = *q
+	_, nat64_prefix, _ := net.ParseCIDR("64:ff9b::/96")
+
+	if dnsLayer := packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
+		dns, _ := dnsLayer.(*layers.DNS)
+		if len(dns.Answers) > 0 {
+			answer := dns.Answers[0]
+			r.AnsIP = answer.IP
+			r.IPv6Ready = !nat64_prefix.Contains(r.AnsIP)
+			r.hasAnswer = answer.IP != nil
+			return r
+		}
+	}
+
+	return nil
 }
 
-func newDBExporter(options *pg.Options) (func(q *QueryLog), func()) {
+func stdExporter(qr InterceptorLog) {
+	if qr != nil {
+		fmt.Println(qr.Colorize())
+	}
+}
+
+func newDBExporter(options *pg.Options) (func(qr InterceptorLog), func()) {
 	db := pg.Connect(options)
-	schema := (*QueryLog)(nil)
-	db.Model(schema).CreateTable(&orm.CreateTableOptions{
-		IfNotExists:   true,
-		FKConstraints: true,
-	})
+	schemas := []interface{}{
+		(*QueryLog)(nil),
+		(*ResponseLog)(nil),
+	}
+	for _, schema := range schemas {
+		db.Model(schema).CreateTable(&orm.CreateTableOptions{
+			IfNotExists: true,
+		})
+	}
 
-	exporter := func(q *QueryLog) {
-		if _, err = db.Model(q).Insert(); err != nil {
+	exporter := func(qr InterceptorLog) {
+		if _, err = db.Model(qr).Insert(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to issue INSERT: %v\n", err)
 			errCounter += 1
 			if errCounter > 5 {
@@ -137,14 +214,14 @@ func newDBExporter(options *pg.Options) (func(q *QueryLog), func()) {
 	}
 
 	closer := func() {
+		fmt.Println("Closing database connection...")
 		db.Close()
-		fmt.Println("Database connection closed")
 	}
 
 	return exporter, closer
 }
 
-func interceptor(exporters []func(*QueryLog)) {
+func interceptor(exporters []func(InterceptorLog)) {
 	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to start capturing: %v\n", err)
@@ -158,20 +235,36 @@ func interceptor(exporters []func(*QueryLog)) {
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		q := newQueryLog(packet)
+		c := newInterceptorLogCommon(packet)
+		q := newQueryLog(packet, c)
+		r := newResponseLog(packet, q)
+
+		is_valid_query := c.DstPort == 53 && q != nil
+		is_valid_response := c.SrcPort == 53 && r != nil
+		has_aaaa_answer := is_valid_response && r.QType == "AAAA" && r.hasAnswer
+
+		var log InterceptorLog = q
+		switch {
+		case !is_valid_query && !has_aaaa_answer:
+			continue
+		case sniffFlag && has_aaaa_answer:
+			log = r
+		}
+
 		for _, exporter := range exporters {
-			exporter(q)
+			exporter(log)
 		}
 	}
 }
 
 func init() {
-	flag.StringVarP(&device, "dev", "i", "", "Capturing interface name")
+	flag.StringVarP(&device, "dev", "i", "", "Interface name")
 	flag.BoolVarP(&quietFlag, "quiet", "q", false, "Suppress standard output")
-	flag.StringVar(&dbAddr, "db-host", "", "Postgres server address to store queries (e.g., localhost:5432)")
-	flag.StringVar(&dbName, "db-name", "", "Database name to store queries")
-	flag.StringVar(&dbUser, "db-user", "", "Username to login DB")
-	flag.StringVar(&dbPassFile, "db-password-file", "", "Path of plaintext password file")
+	flag.BoolVarP(&sniffFlag, "with-response", "A", false, "Store responses to AAAA queries")
+	flag.StringVar(&dbAddr, "db-host", "", "Postgres server address to store logs (e.g., localhost:5432)")
+	flag.StringVar(&dbName, "db-name", "", "Database name to store")
+	flag.StringVar(&dbUser, "db-user", "", "Username to login")
+	flag.StringVar(&dbPassFile, "db-password-file", "", "Password to login - path of a text file containing plaintext password")
 	flag.BoolVarP(&helpFlag, "help", "h", false, "Show help message")
 	flag.BoolVarP(&versionFlag, "version", "v", false, "Show build version")
 	flag.CommandLine.SortFlags = false
@@ -180,19 +273,25 @@ func init() {
 func main() {
 	flag.Parse()
 
+	exporters := []func(InterceptorLog){}
+
 	if versionFlag {
 		fmt.Println(VERSION + "-" + REVISION)
 		os.Exit(0)
 	}
 
-	if helpFlag || device == "" {
+	show_help := helpFlag || device == ""
+	if show_help {
 		flag.PrintDefaults()
 		os.Exit(0)
 	}
 
-	exporters := []func(*QueryLog){}
+	if !quietFlag {
+		exporters = append(exporters, stdExporter)
+	}
 
-	if dbAddr != "" && dbName != "" && dbUser != "" && dbPassFile != "" {
+	use_psql := dbAddr != "" && dbName != "" && dbUser != "" && dbPassFile != ""
+	if use_psql {
 		f, err := os.Open(dbPassFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to open password file for DB login: %v\n", err)
@@ -209,13 +308,9 @@ func main() {
 			Database: dbName,
 		})
 
-		fmt.Println("Database connection prepared")
+		fmt.Printf("Prepared database connection: %s", dbAddr)
 		exporters = append(exporters, dbExporter)
 		defer dbCloser()
-	}
-
-	if !quietFlag {
-		exporters = append(exporters, stdExporter)
 	}
 
 	interceptor(exporters)
