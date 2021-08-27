@@ -63,7 +63,7 @@ type QueryLog struct {
 type ResponseLog struct {
 	QueryLog
 	AnsIP     net.IP `pg:"answer_ip"`
-	IPv6Ready bool   `pg:"ipv6_ready"`
+	IPv6Ready bool   `pg:"ipv6_ready,notnull,use_zero"`
 }
 
 func (q *QueryLog) String() string {
