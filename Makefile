@@ -39,7 +39,7 @@ install:
 	@sudo cp bin/interceptor /usr/local/bin/interceptor
 	@sudo mkdir -p /var/lib/dns-query-interceptor
 	@sudo cp docker-compose.yml /var/lib/dns-query-interceptor/docker-compose.yml
-	@sudo cp -r .secrets /var/lib/dns-query-inerceptor/.secrets
+	@sudo cp -r .secrets /var/lib/dns-query-interceptor/.secrets
 	@sudo cp systemd/dns-query-interceptor@.service /etc/systemd/system/dns-query-interceptor@.service
 	@sudo systemctl daemon-reload
 	@sudo systemctl enable dns-query-interceptor@vsix.service
@@ -49,7 +49,7 @@ install-db:
 	@sudo cp bin/interceptor /usr/local/bin/interceptor
 	@sudo mkdir -p /var/lib/dns-query-interceptor
 	@sudo cp docker-compose.yml /var/lib/dns-query-interceptor/docker-compose.yml
-	@sudo cp -r .secrets /var/lib/dns-query-inerceptor/.secrets
+	@sudo cp -r .secrets /var/lib/dns-query-interceptor/.secrets
 	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml up -d postgres
 
 .PHONY: uninstall
