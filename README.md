@@ -59,6 +59,8 @@ On monitoring hosts:
 % sudo systemctl start dns-query-interceptor@vsix.service
 ```
 
+**NOTE:** On VyOS, `systemctl enable` seems to fail, but it actually works. Remember to run `systemctl restart` after system reboot.
+
 Uninstall from systemd and purge the database - note that this is a destructive operation and cannot be undone.
 
 ```

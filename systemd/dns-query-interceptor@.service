@@ -1,6 +1,5 @@
 [Unit]
 Description=DNS Query Interceptor
-Requires=docker.service
 
 [Service]
 Type=simple
@@ -9,8 +8,6 @@ RestartSec=10
 RestartForceExitStatus=1
 ExecStart=/usr/local/bin/interceptor -i %i -q -A --db-host dns-interceptor-db.fujisawa.vsix.wide.ad.jp:5432 --db-name interceptor --db-user vsix --db-password-file /var/lib/dns-query-interceptor/.secrets/db_password.txt
 RemainAfterExit=yes
-OOMPolicy=stop
 
 [Install]
-Also=docker.service
 WantedBy=multi-user.target
