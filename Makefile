@@ -3,14 +3,16 @@ VERSION := $(shell git describe --tags --abbrev=0)
 REVISION := $(shell git rev-parse --short HEAD)
 GOVERSION := $(shell go version)
 LIBPCAP := /path/to/libpcap
+GOOS := $(shell go env GOOS)
+GOARCH := $(shell go env GOARCH)
 GO_TAGS = -tags netgo -installsuffix netgo
-GO_LDFLAGS_VERSION := -X 'main.VERSION=${VERSION}' -X 'main.REVISION=${REVISION}'
-GO_LDFLAGS_STATICLINK := -linkmode external -extldflags -static -L ${LIBPCAP}
+GO_LDFLAGS_VERSION := -X 'main.VERSION=$(VERSION)' -X 'main.REVISION=$(REVISION)'
+GO_LDFLAGS_STATICLINK := -linkmode external -extldflags -static -L $(LIBPCAP)
 GO_LDFLAGS := -s -w $(GO_LDFLAGS_VERSION)
 GO_BUILD_DYNAMIC := $(GO_TAGS) -ldflags "$(GO_LDFLAGS)" -v
 GO_BUILD_STATIC := $(GO_TAGS) -ldflags "$(GO_LDFLAGS) $(GO_LDFLAGS_STATICLINK)" -v
-export GOOS := $(shell go env GOOS)
-export GOARCH := $(shell go env GOARCH)
+GO_BINARYNAME_STATIC := interceptor_$(GOOS)_$(GOARCH)_$(VERSION)-$(REVISION)
+DOCKER_IMAGE_TAG := wide-vsix/dns-query-interceptor:$(VERSION)-$(REVISION)
 
 .PHONY: all
 all: build
@@ -19,15 +21,19 @@ all: build
 build:
 	@go build $(GO_BUILD_DYNAMIC) -o $(BINDIR)/interceptor ./cmd/interceptor/main.go
 
-.PHONY: static-build ${LIBPCAP}
+.PHONY: static-build $(LIBPCAP)
 static-build:
-	@go build $(GO_BUILD_STATIC) -o $(BINDIR)/interceptor ./cmd/interceptor/main.go
+	@go build $(GO_BUILD_STATIC) -o $(BINDIR)/$(GO_BINARYNAME_STATIC) ./cmd/interceptor/main.go
 
 .PHONY: docker-build
 docker-build:
 	@DOCKER_BUILDKIT=0 docker build \
-		--build-arg INTERCEPTOR_VERSION=${VERSION} --build-arg INTERCEPTOR_REVISION=${REVISION} \
-		--tag wide-vsix/dns-query-interceptor:${VERSION}-${REVISION} .
+		--build-arg INTERCEPTOR_VERSION=$(VERSION) --build-arg INTERCEPTOR_REVISION=$(REVISION) \
+		--tag $(DOCKER_IMAGE_TAG) .
+	@docker rm -f interceptor-binary-copy 2>/dev/null || true
+	@docker create -it --name interceptor-binary-copy $(DOCKER_IMAGE_TAG)
+	@docker cp interceptor-binary-copy:/work/interceptor $(BINDIR)/$(GO_BINARYNAME_STATIC)
+	@docker rm -f interceptor-binary-copy
 
 .PHONY: clean
 clean:
