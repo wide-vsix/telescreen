@@ -35,25 +35,29 @@ clean:
 	@rm -rf $(BINDIR)
 
 .PHONY: install
-install: build
+install:
 	@sudo cp bin/interceptor /usr/local/bin/interceptor
-	@sudo mkdir -p /usr/local/etc/interceptor
-	@sudo cp docker-compose.yml /usr/local/etc/interceptor/docker-compose.yml
-	@sudo cp -r .secrets /usr/local/etc/interceptor/.secrets
+	@sudo mkdir -p /var/lib/dns-query-interceptor
+	@sudo cp docker-compose.yml /var/lib/dns-query-interceptor/docker-compose.yml
+	@sudo cp -r .secrets /var/lib/dns-query-inerceptor/.secrets
 	@sudo cp systemd/dns-query-interceptor@.service /etc/systemd/system/dns-query-interceptor@.service
 	@sudo systemctl daemon-reload
 	@sudo systemctl enable dns-query-interceptor@vsix.service
-	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml pull
-	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml up -d postgres
-	@sleep 5
-	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml stop
+
+.PHONY: install-db
+install-db:
+	@sudo cp bin/interceptor /usr/local/bin/interceptor
+	@sudo mkdir -p /var/lib/dns-query-interceptor
+	@sudo cp docker-compose.yml /var/lib/dns-query-interceptor/docker-compose.yml
+	@sudo cp -r .secrets /var/lib/dns-query-inerceptor/.secrets
+	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml up -d postgres
 
 .PHONY: uninstall
 uninstall:
-	@sudo systemctl disable --now dns-query-interceptor@vsix.service
-	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml kill || true
-	@sudo docker-compose -f /usr/local/etc/interceptor/docker-compose.yml rm -f || true
-	@sudo docker volume rm interceptor_psql interceptor_pgadmin || true
-	@sudo rm -rf /usr/local/bin/interceptor /usr/local/etc/interceptor
-	@sudo rm -f /etc/systemd/system/dns-query-interceptor@.service
+	@sudo systemctl disable --now dns-query-interceptor@vsix.service || true
+	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml kill || true
+	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml rm -f || true
+	@sudo docker volume rm dns-query-interceptor_psql dns-query-interceptor_pgadmin || true
+	@sudo rm -rf /usr/local/bin/interceptor /var/lib/dns-query-interceptor || true
+	@sudo rm -f /etc/systemd/system/dns-query-interceptor@.service || true
 	@sudo systemctl daemon-reload

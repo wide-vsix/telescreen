@@ -44,6 +44,15 @@ All components are managed by systemd.
 
 **CAUTION:** Defaults of this repository are for the vSIX Access Service.
 
+On database host:
+
+```
+% echo -n 'VSIX_STANDARD_PASSWORD' | sha256sum | awk '{print $1}' > .secrets/db_password.txt
+% make install-db
+```
+
+On monitoring hosts:
+
 ```
 % echo -n 'VSIX_STANDARD_PASSWORD' | sha256sum | awk '{print $1}' > .secrets/db_password.txt
 % make install
