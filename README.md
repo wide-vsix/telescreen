@@ -72,11 +72,11 @@ Show tables:
 
 ```
 interceptor=# \dt+
-                              List of relations
- Schema |     Name      | Type  | Owner | Persistence |  Size  | Description 
---------+---------------+-------+-------+-------------+--------+-------------
- public | query_logs    | table | vsix  | permanent   | 544 kB | 
- public | response_logs | table | vsix  | permanent   | 216 kB | 
+                             List of relations
+ Schema |     Name      | Type  | Owner | Persistence | Size  | Description 
+--------+---------------+-------+-------+-------------+-------+-------------
+ public | query_logs    | table | vsix  | permanent   | 67 MB | 
+ public | response_logs | table | vsix  | permanent   | 30 MB | 
 (2 rows)
 ```
 
@@ -86,41 +86,53 @@ Show the number of stored queries:
 interceptor=# SELECT COUNT(*) FROM query_logs;
  count  
 --------
- 190315
+ 611757
 (1 row)
 ```
 
 List all clients' addresses captured from the host:
 
 ```
-interceptor=# SELECT DISTINCT(src_ip) FROM query_logs;
+interceptor=# SELECT COUNT(DISTINCT(src_ip)) FROM query_logs;
+ count 
+-------
+  3084
+(1 row)
+```
+
+```
+interceptor=# SELECT DISTINCT(src_ip) FROM query_logs LIMIT 10;
                 src_ip                
 --------------------------------------
- 2001:200:e20:100:20b4:db4b:c060:dcb7
- 2001:200:e00:b0::110
- 2001:200:e20:20:5054:fe08:4c7e:c08f
- 2001:200:e20:20:8261:5fff:fe06:76f
- 2001:200:e20:100:995a:21a9:db18:db62
- 2001:200:e20:100:65e4:5dd1:86a1:7639
-(6 rows)
+ 2001:200:e20:110:d501:9e30:96c3:dbee
+ 2001:200:e20:110:54d5:c0ea:1e46:b18
+ 2001:200:e20:30:b09c:75d6:b8a:dc61
+ 2001:200:e20:30:4a2:b1f5:60ef:66a8
+ 2001:200:e20:110:7dd9:2164:c54b:fdcc
+ 2001:200:e20:110:1574:f317:f468:c814
+ 2001:200:e20:110:18b5:9b27:f1a2:767
+ 2001:200:e20:110:a158:98f6:2bc8:db99
+ 2001:200:e20:110:8870:ecd3:59a2:336a
+ 2001:200:e20:30:9458:4542:f6a7:6921
+(10 rows)
 ```
 
 Show **10 most recent** queries - replace `DESC` with `ASC` to show the oldest.
 
 ```
 interceptor=# SELECT received_at, src_ip, dst_ip, src_port, query_string, query_type FROM query_logs ORDER BY received_at DESC LIMIT 10;
-           received_at          |               src_ip               |        dst_ip        | src_port |       query_string        | query_type 
--------------------------------+------------------------------------+----------------------+----------+---------------------------+------------
- 2021-08-25 17:24:21.608003+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41148 | vortex.data.microsoft.com | AAAA
- 2021-08-25 17:24:21.605671+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41148 | vortex.data.microsoft.com | A
- 2021-08-25 17:24:21.160051+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    34097 | api.software.com          | AAAA
- 2021-08-25 17:24:21.157676+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    34097 | api.software.com          | A
- 2021-08-25 17:24:18.084043+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    42993 | ws.todoist.com            | AAAA
- 2021-08-25 17:24:18.081667+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    42993 | ws.todoist.com            | A
- 2021-08-25 17:24:11.075838+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    35101 | api.software.com          | AAAA
- 2021-08-25 17:24:11.073594+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    35101 | api.software.com          | A
- 2021-08-25 17:24:08.960203+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41947 | www.google.com            | AAAA
- 2021-08-25 17:24:08.957728+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41947 | www.google.com            | A
+          received_at          |               src_ip               |        dst_ip        | src_port |          query_string           | query_type 
+-------------------------------+------------------------------------+----------------------+----------+---------------------------------+------------
+ 2021-09-01 17:35:04.915184+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41867 | www.amazon.co.jp                | AAAA
+ 2021-09-01 17:35:04.912689+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41867 | www.amazon.co.jp                | A
+ 2021-09-01 17:35:03.286391+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    57975 | vortex.data.microsoft.com       | AAAA
+ 2021-09-01 17:35:03.284447+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    57975 | vortex.data.microsoft.com       | A
+ 2021-09-01 17:35:01.850723+09 | 2001:200:e00:b0::110               | 2001:4860:4860::6464 |    43954 | github.com                      | AAAA
+ 2021-09-01 17:35:01.848449+09 | 2001:200:e00:b0::110               | 2001:4860:4860::6464 |    50450 | github.com                      | A
+ 2021-09-01 17:34:57.710979+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    35531 | signaler-pa.clients6.google.com | AAAA
+ 2021-09-01 17:34:57.708422+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    35531 | signaler-pa.clients6.google.com | A
+ 2021-09-01 17:34:48.079762+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    40454 | vortex.data.microsoft.com       | AAAA
+ 2021-09-01 17:34:48.076557+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    40454 | vortex.data.microsoft.com       | A
 (10 rows)
 ```
 
@@ -128,80 +140,86 @@ Count the number of A and AAAA requests **per FQDN** and show the **top 10** dom
 
 ```
 interceptor=# SELECT query_string, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type='A') AS a, COUNT(*) FILTER(WHERE query_type='AAAA') AS aaaa FROM query_logs GROUP BY query_string ORDER BY total DESC LIMIT 10;
-                     query_string                     | total |  a  | aaaa 
-------------------------------------------------------+-------+-----+------
- api.software.com                                     |  1282 | 641 |  641
- github.com                                           |   132 |  66 |   66
- signaler-pa.clients6.google.com                      |   100 |  50 |   50
- vortex.data.microsoft.com                            |    82 |  41 |   41
- ws.todoist.com                                       |    80 |  24 |   40
- ssl.gstatic.com                                      |    76 |  38 |   38
- mcs-spinnaker-2103948255.us-east-2.elb.amazonaws.com |    66 |  22 |   23
- www.google.com                                       |    59 |  23 |   34
- ipv4only.arpa                                        |    51 |   0 |   51
- play.google.com                                      |    48 |  24 |   24
+           query_string            | total  |   a   | aaaa  
+-----------------------------------+--------+-------+-------
+ api.software.com                  | 130899 | 65450 | 65449
+ safebrowsing.googleapis.com       |  31048 | 15524 | 15524
+ github.com                        |  18273 |  9184 |  9074
+ signaler-pa.clients6.google.com   |  16589 |  8294 |  8295
+ ws.todoist.com                    |  11517 |  5374 |  5541
+ play.google.com                   |   9415 |  4708 |  4706
+ vortex.data.microsoft.com         |   8761 |  4378 |  4383
+ calendar.google.com               |   8368 |  4180 |  4184
+ zabbix01.fujisawa.vsix.wide.ad.jp |   8064 |  4004 |  4034
+ ipv4only.arpa                     |   7745 |   134 |  7611
 (10 rows)
 
 interceptor=# SELECT src_ip, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type='A') AS a, COUNT(*) FILTER(WHERE query_type='AAAA') AS aaaa FROM query_logs GROUP BY src_ip ORDER BY total DESC LIMIT 10;
-                src_ip                | total |  a   | aaaa 
---------------------------------------+-------+------+------
- 2001:200:e20:110:2567:dc41:6982:c766 |  2526 |  340 | 1093
- 2001:200:e20:20:8261:5fff:fe06:76f   |  2475 | 1236 | 1239
- 2001:200:e20:110:8585:cb6d:cfd0:9a47 |  1415 |   30 |  741
- 2001:200:e00:b0::110                 |   126 |   66 |   60
- 2001:200:e20:20:c16e:2e1a:89d6:5c07  |    20 |   11 |    9
- 2001:200:e20:c0:8385:4b2a:d7e5:4490  |    14 |    8 |    6
- 2001:200:e20:30:20c:29ff:fe51:3a     |     7 |    0 |    3
-(7 rows)
+                src_ip                | total  |   a    |  aaaa  
+--------------------------------------+--------+--------+--------
+ 2001:200:e20:20:8261:5fff:fe06:76f   | 334656 | 167789 | 166715
+ 2001:200:e00:b0::110                 |  17787 |   8738 |   8599
+ 2001:200:e20:110:9907:8096:607e:7eaa |  11122 |    447 |   8106
+ 2001:200:e20:110:d028:73a7:e31d:f57f |   8232 |   2739 |   2857
+ 2001:200:e20:110:e802:5495:bd0f:834  |   6429 |    881 |   3070
+ 2001:200:e20:c0:a81c:ee1f:a0b6:880c  |   5146 |   2013 |   2136
+ 2001:200:e20:110:a079:7d82:8ce0:b87c |   5136 |    195 |   2842
+ 2001:200:e20:110:6409:9133:5768:4841 |   4625 |   1282 |   1368
+ 2001:200:e20:30:fc4d:9ffd:54f6:f6b   |   4366 |   1666 |   2333
+ 2001:200:e20:110:5dfb:c750:bcd0:17e5 |   4123 |    164 |   2385
+(10 rows)
 ```
 
 Calculate the ratio of A's query count to AAAA's count normalized by the total, i.e., a degree of IPv4 dependency, and show the **worst 10** clients.
 
 ```
 interceptor=# SELECT src_ip, (COUNT(*) FILTER(WHERE query_type='A') - COUNT(*) FILTER(WHERE query_type='AAAA')) * 100 / COUNT(*) AS v4_dependency FROM query_logs GROUP BY src_ip ORDER BY v4_dependency DESC LIMIT 10;
-                 src_ip                | v4_dependency 
---------------------------------------+---------------
- 2001:200:e20:c0:8385:4b2a:d7e5:4490  |            14
- 2001:200:e20:20:c16e:2e1a:89d6:5c07  |            10
- 2001:200:e00:b0::110                 |             5
- 2001:200:e20:20:8261:5fff:fe06:76f   |             0
- 2001:200:e20:110:2567:dc41:6982:c766 |           -29
- 2001:200:e20:30:20c:29ff:fe51:3a     |           -42
- 2001:200:e20:110:8585:cb6d:cfd0:9a47 |           -50
-(7 rows)
+                 src_ip                 | v4_dependency 
+----------------------------------------+---------------
+ 2001:200:e20:20:9744:64b2:5672:dd34    |           100
+ 2001:200:e20:20:e890:8fdb:7bf3:40cf    |           100
+ 2405:6581:800:6c10:714e:bc06:75e7:5b8b |           100
+ 2001:200:e20:20:639a:29f5:3a46:b464    |           100
+ 2001:200:e20:20:62f4:240b:a3c4:c052    |           100
+ 2001:200:e20:110:458:efb6:9e3c:325b    |           100
+ 2001:200:e20:20:6788:4a0f:9966:e82a    |           100
+ 2001:200:e20:20:421:c6ca:b485:12d4     |           100
+ 2001:200:e20:20:1b9b:a4af:ad73:969f    |           100
+ 2001:200:e20:20:4e1d:cd6d:6f59:c89     |            80
+(10 rows)
 ```
 
 Sort domains supporting IPv6 by their popularity - remove `NOT` to show IPv4 only domains.
 
 ```
 interceptor=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE NOT ipv6_ready IS NULL GROUP BY query_string ORDER BY total DESC LIMIT 10;
-             query_string             | total 
---------------------------------------+-------
- signaler-pa.clients6.google.com      |    61
- ssl.gstatic.com                      |    53
- todoist.com                          |    39
- play.google.com                      |    38
- www.google.com                       |    26
- calendar.google.com                  |    23
- notify.bugsnag.com                   |    22
- monkeybreadsoftware.de               |    22
- e673.dsce9.akamaiedge.net            |    18
- googlehosted.l.googleusercontent.com |    17
+            query_string            | total 
+------------------------------------+-------
+ safebrowsing.googleapis.com        | 15550
+ signaler-pa.clients6.google.com    |  8296
+ play.google.com                    |  4706
+ calendar.google.com                |  4185
+ zabbix01.fujisawa.vsix.wide.ad.jp  |  4035
+ www.google.com                     |  3485
+ e6858.dscx.akamaiedge.net          |  2920
+ ssl.gstatic.com                    |  2920
+ notify.bugsnag.com                 |  1451
+ mgmt.pe01.fujisawa.vsix.wide.ad.jp |  1217
 (10 rows)
 
 interceptor=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE ipv6_ready IS NULL GROUP BY query_string ORDER BY total DESC LIMIT 10;
-                     query_string                     | total 
-------------------------------------------------------+-------
- api.software.com                                     |   456
- github.com                                           |   133
- ipv4only.arpa                                        |    54
- s3.amazonaws.com                                     |    49
- mcs-spinnaker-2103948255.us-east-2.elb.amazonaws.com |    44
- d27xxe7juh1us6.cloudfront.net                        |    30
- edgeapi.slack.com                                    |    29
- slack.com                                            |    23
- stream.pushbullet.com                                |    20
- e6987.a.akamaiedge.net                               |    20
+         query_string          | total 
+-------------------------------+-------
+ api.software.com              | 65448
+ github.com                    | 17364
+ ipv4only.arpa                 |  7988
+ apple.com                     |  5003
+ slack.com                     |  3873
+ paper.dropbox.com             |  2846
+ d27xxe7juh1us6.cloudfront.net |  2447
+ edgeapi.slack.com             |  2247
+ e4478.a.akamaiedge.net        |  1974
+ s3.amazonaws.com              |  1816
 (10 rows)
 ```
 
