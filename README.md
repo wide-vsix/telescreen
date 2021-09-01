@@ -28,6 +28,17 @@ Following options are available:
   -v, --version                   Show build version
 ```
 
+### Use a statically-linked binary
+Build and run binary inside docker:
+
+```
+% make docker-build
+% docker images | grep wide-vsix/dns-query-interceptor
+% docker run --rm --network host wide-vsix/dns-query-interceptor:21.08.27-0c418c3 -i vsix -A
+```
+
+To build binary on your native Linux, you need to compile `libpcap.a` beforehand and write the library path to Makefile. Detailed procedure is described in Dockerfile.
+
 ## Use with PostgreSQL
 All components are managed by systemd.
 
