@@ -70,7 +70,7 @@ Uninstall from systemd and purge the database - note that this is a destructive 
 Login postgres:
 
 ```
-% docker-compose -f /usr/local/etc/interceptor/docker-compose.yml exec postgres psql -d interceptor -U vsix
+% docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml exec postgres psql -d interceptor -U vsix
 psql (13.4 (Debian 13.4-1.pgdg100+1))
 Type "help" for help.
 
