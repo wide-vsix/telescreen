@@ -1,22 +1,33 @@
 BINDIR := bin
-ROOT_PACKAGE := $(shell go list .)
 VERSION := $(shell git describe --tags --abbrev=0)
 REVISION := $(shell git rev-parse --short HEAD)
-#GO_LDFLAGS_VERSION := -X '${ROOT_PACKAGE}.VERSION=${VERSION}' -X '${ROOT_PACKAGE}.REVISION=${REVISION}'
+GOVERSION := $(shell go version)
+LIBPCAP := /path/to/libpcap
+GO_TAGS = -tags netgo -installsuffix netgo
 GO_LDFLAGS_VERSION := -X 'main.VERSION=${VERSION}' -X 'main.REVISION=${REVISION}'
-GO_LDFLAGS := $(GO_LDFLAGS_VERSION)
-GO_BUILD := -ldflags "$(GO_LDFLAGS)"
+GO_LDFLAGS_STATICLINK := -linkmode external -extldflags -static -L ${LIBPCAP}
+GO_LDFLAGS := -s -w $(GO_LDFLAGS_VERSION)
+GO_BUILD_DYNAMIC := $(GO_TAGS) -ldflags "$(GO_LDFLAGS)" -v
+GO_BUILD_STATIC := $(GO_TAGS) -ldflags "$(GO_LDFLAGS) $(GO_LDFLAGS_STATICLINK)" -v
+export GOOS := $(shell go env GOOS)
+export GOARCH := $(shell go env GOARCH)
 
 .PHONY: all
 all: build
 
 .PHONY: build
-build: interceptor.go
-	@go build $(GO_BUILD) -o $(BINDIR)/interceptor -v
+build:
+	@go build $(GO_BUILD_DYNAMIC) -o $(BINDIR)/interceptor ./cmd/interceptor/main.go
 
-.PHONY: run
-run: build
-	@sudo ./bin/interceptor
+.PHONY: static-build ${LIBPCAP}
+static-build:
+	@go build $(GO_BUILD_STATIC) -o $(BINDIR)/interceptor ./cmd/interceptor/main.go
+
+.PHONY: docker-build
+docker-build:
+	@DOCKER_BUILDKIT=0 docker build \
+		--build-arg INTERCEPTOR_VERSION=${VERSION} --build-arg INTERCEPTOR_REVISION=${REVISION} \
+		--tag wide-vsix/dns-query-interceptor:${VERSION}-${REVISION} .
 
 .PHONY: clean
 clean:
