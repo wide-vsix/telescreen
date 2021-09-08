@@ -39,12 +39,12 @@ var (
 	errCounter  uint16
 )
 
-type InterceptorLog interface {
+type telescreenLog interface {
 	String() string
 	Colorize() string
 }
 
-type InterceptorLogCommon struct {
+type telescreenLogCommon struct {
 	Timestamp time.Time `pg:"received_at"`
 	SrcIP     net.IP    `pg:"src_ip"`
 	DstIP     net.IP    `pg:"dst_ip"`
@@ -54,7 +54,7 @@ type InterceptorLogCommon struct {
 }
 
 type QueryLog struct {
-	InterceptorLogCommon
+	telescreenLogCommon
 	QString   string `pg:"query_string"`
 	QType     string `pg:"query_type"`
 	hasAnswer bool   `pg:"-"`
@@ -108,8 +108,8 @@ func (r *ResponseLog) Colorize() string {
 	return fmt.Sprintf("\033[0;35m%s\033[0m", r.String())
 }
 
-func newInterceptorLogCommon(packet gopacket.Packet) *InterceptorLogCommon {
-	c := new(InterceptorLogCommon)
+func newtelescreenLogCommon(packet gopacket.Packet) *telescreenLogCommon {
+	c := new(telescreenLogCommon)
 	c.Timestamp = time.Now()
 
 	if err := packet.ErrorLayer(); err != nil {
@@ -141,9 +141,9 @@ func newInterceptorLogCommon(packet gopacket.Packet) *InterceptorLogCommon {
 	return c
 }
 
-func newQueryLog(packet gopacket.Packet, c *InterceptorLogCommon) *QueryLog {
+func newQueryLog(packet gopacket.Packet, c *telescreenLogCommon) *QueryLog {
 	q := new(QueryLog)
-	q.InterceptorLogCommon = *c
+	q.telescreenLogCommon = *c
 
 	if dnsLayer := packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
 		dns, _ := dnsLayer.(*layers.DNS)
@@ -178,13 +178,13 @@ func newResponseLog(packet gopacket.Packet, q *QueryLog) *ResponseLog {
 	return nil
 }
 
-func stdExporter(qr InterceptorLog) {
+func stdExporter(qr telescreenLog) {
 	if qr != nil {
 		fmt.Println(qr.Colorize())
 	}
 }
 
-func newDBExporter(options *pg.Options) (func(qr InterceptorLog), func()) {
+func newDBExporter(options *pg.Options) (func(qr telescreenLog), func()) {
 	db := pg.Connect(options)
 	schemas := []interface{}{
 		(*QueryLog)(nil),
@@ -196,7 +196,7 @@ func newDBExporter(options *pg.Options) (func(qr InterceptorLog), func()) {
 		})
 	}
 
-	exporter := func(qr InterceptorLog) {
+	exporter := func(qr telescreenLog) {
 		if _, err = db.Model(qr).Insert(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to issue INSERT: %v\n", err)
 			errCounter += 1
@@ -217,7 +217,7 @@ func newDBExporter(options *pg.Options) (func(qr InterceptorLog), func()) {
 	return exporter, closer
 }
 
-func telescreen(exporters []func(InterceptorLog)) {
+func telescreen(exporters []func(telescreenLog)) {
 	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to start capturing: %v\n", err)
@@ -231,7 +231,7 @@ func telescreen(exporters []func(InterceptorLog)) {
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		c := newInterceptorLogCommon(packet)
+		c := newtelescreenLogCommon(packet)
 		if c == nil {
 			continue
 		}
@@ -245,7 +245,7 @@ func telescreen(exporters []func(InterceptorLog)) {
 		is_valid_response := c.SrcPort == 53 && r != nil
 		has_aaaa_answer := is_valid_response && r.QType == "AAAA" && r.hasAnswer
 
-		var log InterceptorLog = q
+		var log telescreenLog = q
 		switch {
 		case !is_valid_query && !has_aaaa_answer:
 			continue
@@ -275,7 +275,7 @@ func init() {
 func main() {
 	flag.Parse()
 
-	exporters := []func(InterceptorLog){}
+	exporters := []func(telescreenLog){}
 
 	if versionFlag {
 		fmt.Println(VERSION + "-" + REVISION)

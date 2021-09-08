@@ -10,7 +10,7 @@ services:
       ipv6_gw:
       default:
     environment:
-      POSTGRES_DB: interceptor
+      POSTGRES_DB: telescreen
       POSTGRES_USER: vsix
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       TZ: "Asia/Tokyo"
