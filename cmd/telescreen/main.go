@@ -108,7 +108,7 @@ func (r *ResponseLog) Colorize() string {
 	return fmt.Sprintf("\033[0;35m%s\033[0m", r.String())
 }
 
-func newtelescreenLogCommon(packet gopacket.Packet) *telescreenLogCommon {
+func newTelescreenLogCommon(packet gopacket.Packet) *telescreenLogCommon {
 	c := new(telescreenLogCommon)
 	c.Timestamp = time.Now()
 
@@ -231,7 +231,7 @@ func telescreen(exporters []func(telescreenLog)) {
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		c := newtelescreenLogCommon(packet)
+		c := newTelescreenLogCommon(packet)
 		if c == nil {
 			continue
 		}
