@@ -1,22 +1,22 @@
-# dns-query-interceptor
-Tiny program intercepting DNS queries
+# telescreen
+Telescreen - a tiny program intercepting DNS query-response pairs
 
 [![asciicast](https://asciinema.org/a/432218.svg)](https://asciinema.org/a/432218?autoplay=1)
 
 ## Use alone
-Golang compiler and `libpcap-dev` are needed to build - you may get the latest binary from [Releases](https://github.com/wide-vsix/dns-query-interceptor/releases).
+Golang compiler and `libpcap-dev` are needed to build - you may get the latest binary from [Releases](https://github.com/wide-vsix/telescreen/releases).
 
 ```
-% git clone --depth 1 https://github.com/wide-vsix/dns-query-interceptor
-% cd dns-query-interceptor
+% git clone --depth 1 https://github.com/wide-vsix/telescreen
+% cd telescreen
 % make build
-% sudo cp bin/interceptor /usr/local/bin/interceptor
+% sudo cp bin/telescreen /usr/local/bin/telescreen
 ```
 
 Following options are available:
 
 ```
-% interceptor -h
+% telescreen -h
   -i, --dev string                Interface name
   -q, --quiet                     Suppress standard output
   -A, --with-response             Store responses to AAAA queries
@@ -33,8 +33,8 @@ Build and run binary inside docker:
 
 ```
 % make docker-build
-% docker images | grep wide-vsix/dns-query-interceptor
-% docker run --rm --network host wide-vsix/dns-query-interceptor:21.08.27-0c418c3 -i vsix -A
+% docker images | grep wide-vsix/telescreen
+% docker run --rm --network host wide-vsix/telescreen:21.08.27-0c418c3 -i vsix -A
 ```
 
 To build binary on your native Linux, you need to compile `libpcap.a` beforehand and write the library path to Makefile. Detailed procedure is described in Dockerfile.
@@ -56,7 +56,7 @@ On monitoring hosts:
 ```
 % echo -n 'VSIX_STANDARD_PASSWORD' | sha256sum | awk '{print $1}' > .secrets/db_password.txt
 % make install
-% sudo systemctl start dns-query-interceptor@vsix.service
+% sudo systemctl start telescreen@vsix.service
 ```
 
 **NOTE:** On VyOS, `systemctl enable` seems to fail, but it actually works. Remember to run `systemctl restart` after system reboot.
@@ -72,17 +72,17 @@ Uninstall from systemd and purge the database - note that this is a destructive 
 Login postgres:
 
 ```
-% docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml exec postgres psql -d interceptor -U vsix
+% docker-compose -f /var/lib/telescreen/docker-compose.yml exec postgres psql -d telescreen -U vsix
 psql (13.4 (Debian 13.4-1.pgdg100+1))
 Type "help" for help.
 
-interceptor=# 
+telescreen=# 
 ```
 
 Show tables:
 
 ```
-interceptor=# \dt+
+telescreen=# \dt+
                              List of relations
  Schema |     Name      | Type  | Owner | Persistence | Size  | Description 
 --------+---------------+-------+-------+-------------+-------+-------------
@@ -94,7 +94,7 @@ interceptor=# \dt+
 Show the number of stored queries:
 
 ```
-interceptor=# SELECT COUNT(*) FROM query_logs;
+telescreen=# SELECT COUNT(*) FROM query_logs;
  count  
 --------
  611757
@@ -104,7 +104,7 @@ interceptor=# SELECT COUNT(*) FROM query_logs;
 List all clients' addresses captured from the host:
 
 ```
-interceptor=# SELECT COUNT(DISTINCT(src_ip)) FROM query_logs;
+telescreen=# SELECT COUNT(DISTINCT(src_ip)) FROM query_logs;
  count 
 -------
   3084
@@ -112,7 +112,7 @@ interceptor=# SELECT COUNT(DISTINCT(src_ip)) FROM query_logs;
 ```
 
 ```
-interceptor=# SELECT DISTINCT(src_ip) FROM query_logs LIMIT 10;
+telescreen=# SELECT DISTINCT(src_ip) FROM query_logs LIMIT 10;
                 src_ip                
 --------------------------------------
  2001:200:e20:110:d501:9e30:96c3:dbee
@@ -131,7 +131,7 @@ interceptor=# SELECT DISTINCT(src_ip) FROM query_logs LIMIT 10;
 Show **10 most recent** queries - replace `DESC` with `ASC` to show the oldest.
 
 ```
-interceptor=# SELECT received_at, src_ip, dst_ip, src_port, query_string, query_type FROM query_logs ORDER BY received_at DESC LIMIT 10;
+telescreen=# SELECT received_at, src_ip, dst_ip, src_port, query_string, query_type FROM query_logs ORDER BY received_at DESC LIMIT 10;
           received_at          |               src_ip               |        dst_ip        | src_port |          query_string           | query_type 
 -------------------------------+------------------------------------+----------------------+----------+---------------------------------+------------
  2021-09-01 17:35:04.915184+09 | 2001:200:e20:20:8261:5fff:fe06:76f | 2001:4860:4860::6464 |    41867 | www.amazon.co.jp                | AAAA
@@ -150,7 +150,7 @@ interceptor=# SELECT received_at, src_ip, dst_ip, src_port, query_string, query_
 Count the number of A and AAAA requests **per FQDN** and show the **top 10** domains - replace `query_string` with `src_ip` to show per clients.
 
 ```
-interceptor=# SELECT query_string, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type='A') AS a, COUNT(*) FILTER(WHERE query_type='AAAA') AS aaaa FROM query_logs GROUP BY query_string ORDER BY total DESC LIMIT 10;
+telescreen=# SELECT query_string, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type='A') AS a, COUNT(*) FILTER(WHERE query_type='AAAA') AS aaaa FROM query_logs GROUP BY query_string ORDER BY total DESC LIMIT 10;
            query_string            | total  |   a   | aaaa  
 -----------------------------------+--------+-------+-------
  api.software.com                  | 130899 | 65450 | 65449
@@ -165,7 +165,7 @@ interceptor=# SELECT query_string, COUNT(*) AS total, COUNT(*) FILTER(WHERE quer
  ipv4only.arpa                     |   7745 |   134 |  7611
 (10 rows)
 
-interceptor=# SELECT src_ip, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type='A') AS a, COUNT(*) FILTER(WHERE query_type='AAAA') AS aaaa FROM query_logs GROUP BY src_ip ORDER BY total DESC LIMIT 10;
+telescreen=# SELECT src_ip, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type='A') AS a, COUNT(*) FILTER(WHERE query_type='AAAA') AS aaaa FROM query_logs GROUP BY src_ip ORDER BY total DESC LIMIT 10;
                 src_ip                | total  |   a    |  aaaa  
 --------------------------------------+--------+--------+--------
  2001:200:e20:20:8261:5fff:fe06:76f   | 334656 | 167789 | 166715
@@ -184,7 +184,7 @@ interceptor=# SELECT src_ip, COUNT(*) AS total, COUNT(*) FILTER(WHERE query_type
 Calculate the ratio of A's query count to AAAA's count normalized by the total, i.e., a degree of IPv4 dependency, and show the **worst 10** clients.
 
 ```
-interceptor=# SELECT src_ip, (COUNT(*) FILTER(WHERE query_type='A') - COUNT(*) FILTER(WHERE query_type='AAAA')) * 100 / COUNT(*) AS v4_dependency FROM query_logs GROUP BY src_ip ORDER BY v4_dependency DESC LIMIT 10;
+telescreen=# SELECT src_ip, (COUNT(*) FILTER(WHERE query_type='A') - COUNT(*) FILTER(WHERE query_type='AAAA')) * 100 / COUNT(*) AS v4_dependency FROM query_logs GROUP BY src_ip ORDER BY v4_dependency DESC LIMIT 10;
                  src_ip                 | v4_dependency 
 ----------------------------------------+---------------
  2001:200:e20:20:9744:64b2:5672:dd34    |           100
@@ -203,7 +203,7 @@ interceptor=# SELECT src_ip, (COUNT(*) FILTER(WHERE query_type='A') - COUNT(*) F
 Sort domains supporting IPv6 by their popularity - remove `NOT` to show IPv4 only domains.
 
 ```
-interceptor=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE NOT ipv6_ready IS NULL GROUP BY query_string ORDER BY total DESC LIMIT 10;
+telescreen=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE NOT ipv6_ready IS NULL GROUP BY query_string ORDER BY total DESC LIMIT 10;
             query_string            | total 
 ------------------------------------+-------
  safebrowsing.googleapis.com        | 15550
@@ -218,7 +218,7 @@ interceptor=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE NO
  mgmt.pe01.fujisawa.vsix.wide.ad.jp |  1217
 (10 rows)
 
-interceptor=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE ipv6_ready IS NULL GROUP BY query_string ORDER BY total DESC LIMIT 10;
+telescreen=# SELECT query_string, COUNT(*) AS total FROM response_logs WHERE ipv6_ready IS NULL GROUP BY query_string ORDER BY total DESC LIMIT 10;
          query_string          | total 
 -------------------------------+-------
  api.software.com              | 65448
