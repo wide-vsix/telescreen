@@ -217,7 +217,7 @@ func newDBExporter(options *pg.Options) (func(qr InterceptorLog), func()) {
 	return exporter, closer
 }
 
-func interceptor(exporters []func(InterceptorLog)) {
+func telescreen(exporters []func(InterceptorLog)) {
 	handle, err := pcap.OpenLive(device, snaplen, promiscuous, timeout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to start capturing: %v\n", err)
@@ -315,5 +315,5 @@ func main() {
 		defer dbCloser()
 	}
 
-	interceptor(exporters)
+	telescreen(exporters)
 }

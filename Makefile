@@ -11,29 +11,29 @@ GO_LDFLAGS_STATICLINK := -linkmode external -extldflags -static -L $(LIBPCAP)
 GO_LDFLAGS := -s -w $(GO_LDFLAGS_VERSION)
 GO_BUILD_DYNAMIC := $(GO_TAGS) -ldflags "$(GO_LDFLAGS)" -v
 GO_BUILD_STATIC := $(GO_TAGS) -ldflags "$(GO_LDFLAGS) $(GO_LDFLAGS_STATICLINK)" -v
-GO_BINARYNAME_STATIC := interceptor_$(GOOS)_$(GOARCH)_$(VERSION)-$(REVISION)
-DOCKER_IMAGE_TAG := wide-vsix/dns-query-interceptor:$(VERSION)-$(REVISION)
+GO_BINARYNAME_STATIC := telescreen_$(GOOS)_$(GOARCH)_$(VERSION)-$(REVISION)
+DOCKER_IMAGE_TAG := wide-vsix/telescreen:$(VERSION)-$(REVISION)
 
 .PHONY: all
 all: build
 
 .PHONY: build
 build:
-	@go build $(GO_BUILD_DYNAMIC) -o $(BINDIR)/interceptor ./cmd/interceptor/main.go
+	@go build $(GO_BUILD_DYNAMIC) -o $(BINDIR)/telescreen ./cmd/telescreen/main.go
 
 .PHONY: static-build $(LIBPCAP)
 static-build:
-	@go build $(GO_BUILD_STATIC) -o $(BINDIR)/$(GO_BINARYNAME_STATIC) ./cmd/interceptor/main.go
+	@go build $(GO_BUILD_STATIC) -o $(BINDIR)/$(GO_BINARYNAME_STATIC) ./cmd/telescreen/main.go
 
 .PHONY: docker-build
 docker-build:
 	@DOCKER_BUILDKIT=0 docker build \
-		--build-arg INTERCEPTOR_VERSION=$(VERSION) --build-arg INTERCEPTOR_REVISION=$(REVISION) \
+		--build-arg telescreen_VERSION=$(VERSION) --build-arg telescreen_REVISION=$(REVISION) \
 		--tag $(DOCKER_IMAGE_TAG) .
-	@docker rm -f interceptor-binary-copy 2>/dev/null || true
-	@docker create -it --name interceptor-binary-copy $(DOCKER_IMAGE_TAG)
-	@docker cp interceptor-binary-copy:/work/interceptor $(BINDIR)/$(GO_BINARYNAME_STATIC)
-	@docker rm -f interceptor-binary-copy
+	@docker rm -f telescreen-binary-copy 2>/dev/null || true
+	@docker create -it --name telescreen-binary-copy $(DOCKER_IMAGE_TAG)
+	@docker cp telescreen-binary-copy:/work/telescreen $(BINDIR)/$(GO_BINARYNAME_STATIC)
+	@docker rm -f telescreen-binary-copy
 
 .PHONY: clean
 clean:
@@ -42,28 +42,28 @@ clean:
 
 .PHONY: install
 install:
-	@sudo cp bin/interceptor /usr/local/bin/interceptor
-	@sudo mkdir -p /var/lib/dns-query-interceptor
-	@sudo cp docker-compose.yml /var/lib/dns-query-interceptor/docker-compose.yml
-	@sudo cp -r .secrets /var/lib/dns-query-interceptor/.secrets
-	@sudo cp systemd/dns-query-interceptor@.service /etc/systemd/system/dns-query-interceptor@.service
+	@sudo cp bin/telescreen /usr/local/bin/telescreen
+	@sudo mkdir -p /var/lib/telescreen
+	@sudo cp docker-compose.yml /var/lib/telescreen/docker-compose.yml
+	@sudo cp -r .secrets /var/lib/telescreen/.secrets
+	@sudo cp systemd/telescreen@.service /etc/systemd/system/telescreen@.service
 	@sudo systemctl daemon-reload
-	@sudo systemctl enable dns-query-interceptor@vsix.service
+	@sudo systemctl enable telescreen@vsix.service
 
 .PHONY: install-db
 install-db:
-	@sudo cp bin/interceptor /usr/local/bin/interceptor
-	@sudo mkdir -p /var/lib/dns-query-interceptor
-	@sudo cp docker-compose.yml /var/lib/dns-query-interceptor/docker-compose.yml
-	@sudo cp -r .secrets /var/lib/dns-query-interceptor/.secrets
-	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml up -d postgres
+	@sudo cp bin/telescreen /usr/local/bin/telescreen
+	@sudo mkdir -p /var/lib/telescreen
+	@sudo cp docker-compose.yml /var/lib/telescreen/docker-compose.yml
+	@sudo cp -r .secrets /var/lib/telescreen/.secrets
+	@sudo docker-compose -f /var/lib/telescreen/docker-compose.yml up -d postgres
 
 .PHONY: uninstall
 uninstall:
-	@sudo systemctl disable --now dns-query-interceptor@vsix.service || true
-	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml kill || true
-	@sudo docker-compose -f /var/lib/dns-query-interceptor/docker-compose.yml rm -f || true
-	@sudo docker volume rm dns-query-interceptor_psql dns-query-interceptor_pgadmin || true
-	@sudo rm -rf /usr/local/bin/interceptor /var/lib/dns-query-interceptor || true
-	@sudo rm -f /etc/systemd/system/dns-query-interceptor@.service || true
+	@sudo systemctl disable --now telescreen@vsix.service || true
+	@sudo docker-compose -f /var/lib/telescreen/docker-compose.yml kill || true
+	@sudo docker-compose -f /var/lib/telescreen/docker-compose.yml rm -f || true
+	@sudo docker volume rm telescreen_psql telescreen_pgadmin || true
+	@sudo rm -rf /usr/local/bin/telescreen /var/lib/telescreen || true
+	@sudo rm -f /etc/systemd/system/telescreen@.service || true
 	@sudo systemctl daemon-reload

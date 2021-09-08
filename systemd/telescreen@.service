@@ -1,0 +1,13 @@
+[Unit]
+Description=Telescreen - intercepting DNS query-response pairs
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+RestartForceExitStatus=1
+ExecStart=/usr/local/bin/telescreen -i %i -q -A --db-host dns-interceptor-db.fujisawa.vsix.wide.ad.jp:5432 --db-name interceptor --db-user vsix --db-password-file /var/lib/telescreen/.secrets/db_password.txt
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

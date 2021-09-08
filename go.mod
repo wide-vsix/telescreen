@@ -1,4 +1,4 @@
-module github.com/wide-vsix/dns-query-interceptor
+module github.com/wide-vsix/telescreen
 
 go 1.17
 

@@ -1,8 +1,8 @@
 FROM ubuntu:focal AS builder
 
 ARG LIBPCAP_VERSION="1.10.1"
-ARG INTERCEPTOR_VERSION="unknown"
-ARG INTERCEPTOR_REVISION="unknown"
+ARG TELESCREEN_VERSION="unknown"
+ARG TELESCREEN_REVISION="unknown"
 
 ENV GOOS=linux
 ENV GOARCH=amd64
@@ -18,7 +18,7 @@ RUN apt-get update \
       flex \
       libpcap-dev
 
-WORKDIR /go/src/github.com/wide-vsix/dns-query-interceptor
+WORKDIR /go/src/github.com/wide-vsix/telescreen
 COPY . .
 
 RUN wget https://www.tcpdump.org/release/libpcap-${LIBPCAP_VERSION}.tar.gz -O libpcap.tar.gz \
@@ -31,13 +31,13 @@ RUN wget https://www.tcpdump.org/release/libpcap-${LIBPCAP_VERSION}.tar.gz -O li
 
 RUN go build \
       -tags netgo -installsuffix netgo \
-      -ldflags "-s -w -linkmode external -extldflags -static -L ./libpcap -X 'main.VERSION=${INTERCEPTOR_VERSION}' -X 'main.REVISION=${INTERCEPTOR_REVISION}'" \
-      -o bin/interceptor \
+      -ldflags "-s -w -linkmode external -extldflags -static -L ./libpcap -X 'main.VERSION=${TELESCREEN_VERSION}' -X 'main.REVISION=${TELESCREEN_REVISION}'" \
+      -o bin/telescreen \
       -v \
-      ./cmd/interceptor/main.go
+      ./cmd/telescreen/main.go
 
 FROM alpine:latest
 
 WORKDIR /work
-COPY --from=builder /go/src/github.com/wide-vsix/dns-query-interceptor/bin/interceptor ./
-ENTRYPOINT ["/work/interceptor"]
+COPY --from=builder /go/src/github.com/wide-vsix/telescreen/bin/telescreen ./
+ENTRYPOINT ["/work/telescreen"]
