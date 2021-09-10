@@ -32,6 +32,7 @@ var (
 	dbUser      string // Postgresql: Login username
 	dbPassFile  string // Postgresql: Login password file
 	quietFlag   bool
+	dockerFlag  bool
 	helpFlag    bool
 	sniffFlag   bool
 	versionFlag bool
@@ -263,10 +264,11 @@ func init() {
 	flag.StringVarP(&device, "dev", "i", "", "Interface name")
 	flag.BoolVarP(&quietFlag, "quiet", "q", false, "Suppress standard output")
 	flag.BoolVarP(&sniffFlag, "with-response", "A", false, "Store responses to AAAA queries")
-	flag.StringVar(&dbAddr, "db-host", "", "Postgres server address to store logs (e.g., localhost:5432)")
-	flag.StringVar(&dbName, "db-name", "", "Database name to store")
-	flag.StringVar(&dbUser, "db-user", "", "Username to login")
-	flag.StringVar(&dbPassFile, "db-password-file", "", "Password to login - path of a text file containing plaintext password")
+	flag.StringVarP(&dbAddr, "db-host", "H", "", "Postgres server address to store logs (e.g., localhost:5432)")
+	flag.StringVarP(&dbName, "db-name", "N", "", "Database name to store")
+	flag.StringVarP(&dbUser, "db-user", "U", "", "Username to login")
+	flag.StringVarP(&dbPassFile, "db-password-file", "P", "", "Password to login - path of a plaintext password file")
+	flag.BoolVarP(&dockerFlag, "docker", "d", false, "Run inside a container - load options from environment variables")
 	flag.BoolVarP(&helpFlag, "help", "h", false, "Show help message")
 	flag.BoolVarP(&versionFlag, "version", "v", false, "Show build version")
 	flag.CommandLine.SortFlags = false
@@ -276,6 +278,21 @@ func main() {
 	flag.Parse()
 
 	exporters := []func(telescreenLog){}
+
+	if dockerFlag {
+		device = os.Getenv("TELESCREEN_DEVICE")
+		dbAddr = os.Getenv("TELESCREEN_DB_HOST")
+		dbName = os.Getenv("TELESCREEN_DB_NAME")
+		dbUser = os.Getenv("TELESCREEN_DB_USER")
+		dbPassFile = os.Getenv("TELESCREEN_DB_PASSWORD_FILE")
+		quietFlag = true
+		switch os.Getenv("TELESCREEN_STORE_RESPONSES") {
+		case "yes", "Yes", "YES", "true", "True", "TRUE":
+			sniffFlag = true
+		default:
+			sniffFlag = true
+		}
+	}
 
 	if versionFlag {
 		fmt.Println(VERSION + "-" + REVISION)
