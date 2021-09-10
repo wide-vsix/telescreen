@@ -1,6 +1,18 @@
 version: "3.9"
 
 services:
+  telescreen:
+    image: wide-vsix/telescreen:latest
+    restart: unless-stopped
+    build:
+      context: .
+    network_mode: host
+    depends_on:
+      - postgres
+    command: -i vsix -A -q --db-host postgres --db-name telescreen --db-user vsix --db-password-file /run/secrets/db_password
+    secrets:
+      - db_password
+
   postgres:
     image: postgres
     restart: unless-stopped
