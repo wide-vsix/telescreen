@@ -9,7 +9,14 @@ services:
     network_mode: host
     depends_on:
       - postgres
-    command: -i vsix -A -q --db-host postgres --db-name telescreen --db-user vsix --db-password-file /run/secrets/db_password
+    command: --docker
+    environment:
+      TELESCREEN_DEVICE: vsix
+      TELESCREEN_DB_HOST: localhost:5432
+      TELESCREEN_DB_NAME: telescreen
+      TELESCREEN_DB_USER: vsix
+      TELESCREEN_DB_PASSWORD_FILE: /run/secrets/db_password
+      TELESCREEN_STORE_RESPONSES: "yes"
     secrets:
       - db_password
 
