@@ -1,10 +1,12 @@
-name: Publish Docker image to GitHub Package Registry
+name: deploy to GPR
 on: push
-  branches:
-    - master
-  paths:
-    - 'cmd/**'
-    - 'Dockerfile'
+#on:
+#  push:
+#    branches:
+#      - master
+#    paths:
+#      - 'cmd/**'
+#      - 'Dockerfile'
 
 jobs:
   build:
