@@ -24,20 +24,20 @@ const (
 )
 
 var (
-	VERSION     string = "0.0.0"
-	REVISION    string = "develop"
-	device      string // Where DNS packets are forwarded
-	dbAddr      string // Postgresql: IP address and port number pair
-	dbName      string // Postgresql: Database name
-	dbUser      string // Postgresql: Login username
-	dbPassFile  string // Postgresql: Login password file
-	quietFlag   bool
-	dockerFlag  bool
-	helpFlag    bool
-	sniffFlag   bool
-	versionFlag bool
-	err         error
-	errCounter  uint16
+	VERSION       string = "0.0.0"
+	REVISION      string = "develop"
+	device        string // Where DNS packets are forwarded
+	dbAddr        string // Postgresql: IP address and port number pair
+	dbName        string // Postgresql: Database name
+	dbUser        string // Postgresql: Login username
+	dbPassFile    string // Postgresql: Login password file
+	quietFlag     bool
+	containerFlag bool
+	helpFlag      bool
+	sniffFlag     bool
+	versionFlag   bool
+	err           error
+	errCounter    uint16
 )
 
 type telescreenLog interface {
@@ -268,7 +268,7 @@ func init() {
 	flag.StringVarP(&dbName, "db-name", "N", "", "Database name to store")
 	flag.StringVarP(&dbUser, "db-user", "U", "", "Username to login")
 	flag.StringVarP(&dbPassFile, "db-password-file", "P", "", "Password to login - path of a plaintext password file")
-	flag.BoolVarP(&dockerFlag, "docker", "d", false, "Run inside a container - load options from environment variables")
+	flag.BoolVarP(&containerFlag, "container", "c", false, "Run inside a container - load options from environment variables")
 	flag.BoolVarP(&helpFlag, "help", "h", false, "Show help message")
 	flag.BoolVarP(&versionFlag, "version", "v", false, "Show build version")
 	flag.CommandLine.SortFlags = false
@@ -279,7 +279,7 @@ func main() {
 
 	exporters := []func(telescreenLog){}
 
-	if dockerFlag {
+	if containerFlag {
 		device = os.Getenv("TELESCREEN_DEVICE")
 		dbAddr = os.Getenv("TELESCREEN_DB_HOST")
 		dbName = os.Getenv("TELESCREEN_DB_NAME")
