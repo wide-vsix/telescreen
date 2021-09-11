@@ -23,15 +23,18 @@ all: build
 
 .PHONY: build
 build:
+	@mkdir -p $(LOCAL_BINDIR)
 	@go build $(GO_BUILD_DYNAMIC) -o $(LOCAL_BINDIR)/$(GO_BIN) $(GO_SRC)
 
 .PHONY: build-static
 build-static: $(LIBPCAP)
+	@mkdir -p $(LOCAL_BINDIR)
 	@go build $(GO_BUILD_STATIC) -o $(LOCAL_BINDIR)/$(GO_BIN_STATIC) $(GO_SRC)
 	@cp $(LOCAL_BINDIR)/$(GO_BIN_STATIC) $(LOCAL_BINDIR)/$(GO_BIN)
 
 .PHONY: build-static-docker
 build-static-docker:
+	@mkdir -p $(LOCAL_BINDIR)
 	@DOCKER_BUILDKIT=0 docker build \
 		--build-arg TELESCREEN_VERSION=$(VERSION) --build-arg TELESCREEN_REVISION=$(REVISION) \
 		--tag $(DOCKER_IMAGE_TAG) .
