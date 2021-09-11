@@ -51,7 +51,7 @@ type telescreenLogCommon struct {
 	DstIP     net.IP    `pg:"dst_ip"`
 	SrcPort   uint16    `pg:"src_port"`
 	DstPort   uint16    `pg:"dst_port"`
-	TransTCP  bool      `pg:"tcp_transport"`
+	TransTCP  bool      `pg:"tcp_transport,notnull,use_zero"`
 }
 
 type QueryLog struct {
