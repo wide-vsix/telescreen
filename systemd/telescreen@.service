@@ -6,7 +6,7 @@ Type=simple
 Restart=on-failure
 RestartSec=10
 RestartForceExitStatus=1
-ExecStart=/usr/local/bin/telescreen -i %i -q -A --db-host dns-telescreen-db.fujisawa.vsix.wide.ad.jp:5432 --db-name telescreen --db-user vsix --db-password-file /var/lib/telescreen/.secrets/db_password.txt
+ExecStart=/usr/local/bin/telescreen -i %i -q -A --db-host telescreen-db.fujisawa.vsix.wide.ad.jp:5432 --db-name telescreen --db-user vsix --db-password-file /var/lib/telescreen/.secrets/db_password.txt
 RemainAfterExit=yes
 
 [Install]
