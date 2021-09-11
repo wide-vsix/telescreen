@@ -41,3 +41,4 @@ FROM alpine:latest
 WORKDIR /work
 COPY --from=builder /go/src/github.com/wide-vsix/telescreen/bin/telescreen ./
 ENTRYPOINT ["/work/telescreen"]
+CMD ["--docker"]

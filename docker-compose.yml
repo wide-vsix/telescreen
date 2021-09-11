@@ -9,7 +9,6 @@ services:
     network_mode: host
     depends_on:
       - postgres
-    command: --docker
     environment:
       TELESCREEN_DEVICE: vsix
       TELESCREEN_DB_HOST: localhost:5432
