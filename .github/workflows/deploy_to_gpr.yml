@@ -1,12 +1,11 @@
 name: deploy to GPR
-on: push
-#on:
-#  push:
-#    branches:
-#      - master
-#    paths:
-#      - 'cmd/**'
-#      - 'Dockerfile'
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'cmd/**'
+      - 'Dockerfile'
 
 jobs:
   build:
